@@ -1,0 +1,68 @@
+import warnings
+warnings.filterwarnings('ignore')
+import pandas as pd 
+import matplotlib.pyplot as plt 
+import seaborn as sns
+import numpy as np
+import operator
+%matplotlib inline
+
+#1D resampling block
+
+facebook = pd.read_csv("C:\\Users\\mpucci\\Desktop\\Financial Data\\Financial Data\\Minute Data\\FB.Last.txt", header=None, delimiter=';')
+facebook.columns = ['Datetime', 'Open', 'High','Low', 'Close', 'Volume']
+
+facebook.Datetime = pd.to_datetime(facebook.Datetime, format='%Y%m%d %H%M%S')
+
+facebook.set_index('Datetime', drop=True, inplace=True)
+
+for resample in ['1D']:
+    print('SAMPLING %s ' % resample)
+    res = facebook.resample(resample).agg({'Open' : 'first', 'High' : 'max', 'Low' : 'min', 'Close' : 'last','Volume' : 'sum'})
+ 
+ #These are the candle sizes 
+
+candles_df = ((res['Close'] - res['Open'])/(res['Open']))*100
+#print (candles_df)
+
+candles_df.describe()
+
+res["Candles"] = candles_df
+facebook_filtered = res.dropna(axis=0)
+facebook_filtered = facebook_filtered[facebook_filtered.index.dayofweek < 5]
+
+# plot of distirbution of candle size
+
+plt.hist(facebook_filtered["Candles"],bins=1000)
+plt.show()
+
+facebook_filtered["Candles"].describe()
+#This is the median:
+
+#This is the mean:
+
+std = np.std(facebook_filtered['Candles'])
+#print (df) # df dataframe to continue with 
+df = facebook_filtered.reset_index()
+trades = df[(df.Candles < -3*std)].index.values
+
+print(trades)
+
+trade_length = []
+
+for i in trades[1:]:
+    c=0
+    anchor = facebook_filtered.Open[i] 
+    i+=1
+    value = facebook_filtered.High[i]
+        
+    while (value <= (0.97*anchor)):
+        i=i+1
+        value = facebook_filtered.High[i] 
+        #print (value)
+        c=c+1
+    trade_length.append(c)
+    print (trade_length)
+ 
+average = np.average(trade_length)
+print (average)
